@@ -15,30 +15,29 @@ function parseMonk(sourceFile)
   targets: Lua table with Torch tensors of target patterns
   patterno: integer with total count of patterns in the dataset
 --]]
-if (sourceFile == nil) then error "Missing file argument" end
+  if (sourceFile == nil) then error "Missing file argument" end
 
   input = {}
   targets = {}
   -- separator isn't actually a comma but blankspace
   local f = csv.open(sourceFile, {separator = ' '})
+  
   patterno = 0
   for fields in f:lines() do
     -- new pattern
-    pattern = {}
-    for i,v in ipairs(fields) do
-      -- indices start from 1
-      -- index 1 is the separator, so we ignore it
-      if (i == 2) then
-        -- index 2 is the first valid field: the target class
-        targets[patterno] = torch.Tensor({tonumber(v)})
-      elseif (3 <= i and i <= 8) then
-        -- indices from 3 to 6 are integer features of the input pattern
-        pattern[i-2] = tonumber(v)
-      end
-      -- index 9 is a unique string identifier for the pattern, which we don't need
-    end
-    input[patterno] = torch.Tensor(pattern)
     patterno = patterno + 1
+    input[patterno] = {}
+    
+    -- index 1 is the separator, so we ignore it
+    -- index 2 is the first valid field: the target class
+    targets[patterno] = torch.Tensor({tonumber(fields[2])})
+    -- indices from 3 to 8 are integer features of the input pattern
+    for i = 3,8 do
+      input[patterno][i-2] = tonumber(fields[i])
+    end
+    -- index 9 is a unique string identifier for the pattern, which we don't need
+    
+    input[patterno] = torch.Tensor(input[patterno])
   end
   
   return input,targets,patterno
