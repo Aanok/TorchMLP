@@ -5,20 +5,19 @@ local torch = require("torch")
 
 
 -- This will parse a Monk data file
-function parseMonk(sourceFile)
+function parse_monks(source_file)
 --[[
   ARGS:
-  sourceFile: file with Monk data to parse
+  source_file: file with Monk data to parse
   RETURNS:
-  (input,targets,patterno)
+  (input,targets)
   input: Lua table with Torch tensors of input patterns
   targets: Lua table with Torch tensors of target patterns
-  patterno: integer with total count of patterns in the dataset
 --]]
-  if (sourceFile == nil) then error "Missing file argument" end
+  if (source_file == nil) then error "Missing file argument" end
 
   -- separator isn't actually a comma but blankspace
-  local f = csv.open(sourceFile, {separator = ' '})
+  local f = csv.open(source_file, {separator = ' '})
   
   -- one-hot encoding of input features
   local onehot = {}
@@ -59,4 +58,65 @@ function parseMonk(sourceFile)
   end
   
   return input,targets
+end
+
+
+-- this will parse an ML-CUP data file
+function parse_cup(source_file)
+--[[
+  ARGS:
+  source_file: file with CUP data to parse
+  RETURNS:
+  (input,targets)
+  input: Lua table with Torch tensors of input patterns
+  targets: Lua table with Torch tensors of target patterns
+--]]
+  if (source_file == nil) then error "Missing file argument" end
+
+  local f = csv.open(source_file)
+  
+  -- parsed return values
+  local input = {}
+  local targets = {}
+  -- metadata for normalization
+  local in_min, in_max = math.huge, -math.huge
+  local t_min, t_max = math.huge, -math.huge
+  --line counter
+  local line = 0
+  for fields in f:lines() do
+    line = line + 1
+    -- ignore the header
+    if line >= 10 then
+      input[#input + 1] = torch.Tensor(10)
+      targets[#targets + 1] = torch.Tensor(2)
+      -- first field is the separator
+      -- second field is the ID, which we don't need (it is encoded by the order)
+      for i = 2,11 do
+        local value = tonumber(fields[i])
+        input[#input][i-1] = value
+        if value > in_max then in_max = value end
+        if value < in_min then in_min = value end
+      end
+      for i = 12,13 do
+        local value = tonumber(fields[i])
+        targets[#targets][i-11] = value
+        if value > t_max then t_max = value end
+        if value < t_min then t_min = value end
+      end
+    end
+  end
+  
+  -- normalization
+  local range = in_max - in_min
+  for _,v in ipairs(input) do
+    v:add(-in_min)
+    v:div(range)
+  end
+  range = t_max - t_min
+  for _,v in ipairs(targets) do
+    v:add(-t_min)
+    v:div(range)
+  end
+  
+  return input, targets, t_min, t_max
 end
