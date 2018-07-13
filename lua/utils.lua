@@ -4,16 +4,13 @@ local csv = require("csv")
 local torch = require("torch")
 
 
--- This will parse a Monk data file
+--- Parse MONKS data file
+-- Parses provided CSV file, applying one-hot encoding to input.
+-- @param source_file Path to file with Monk data to parse.
+-- @return input,targets where
+-- <li>input: Array-like table with Tensors of input patterns.</li>
+-- <li>targets: Array-like table with Tensors of target patterns.</li>
 function parse_monks(source_file)
---[[
-  ARGS:
-  source_file: file with Monk data to parse
-  RETURNS:
-  (input,targets)
-  input: Lua table with Torch tensors of input patterns
-  targets: Lua table with Torch tensors of target patterns
---]]
   if (source_file == nil) then error("Missing file argument") end
 
   -- separator isn't actually a comma but blankspace
@@ -61,16 +58,16 @@ function parse_monks(source_file)
 end
 
 
--- this will parse an ML-CUP data file
+--- Parse ML-CUP data file
+-- Parses provided CSV file, applying normalization to input and targets.
+-- @param source_file Path to file with ML-CUP data to parse.
+-- @param has_labels Boolean to distinguish labelled (TR) and unlabelled (TS) sources.
+-- @return input,targets, t_min, t_max where
+-- <li>input: Array-like table with Tensors of input patterns.</li>
+-- <li>targets: Array-like table with Tensors of target patterns. nil if has_labels == false.</li>
+-- <li>t_min: Minimum of target patterns. nil if has_labels == false.</li>
+-- <li>t_max: Maximum of target patterns. nil if has_labels == false.</li>
 function parse_cup(source_file, has_labels)
---[[
-  ARGS:
-  source_file: file with CUP data to parse
-  RETURNS:
-  (input,targets)
-  input: Lua table with Torch tensors of input patterns
-  targets: Lua table with Torch tensors of target patterns
---]]
   if (source_file == nil) then error("Missing file argument") end
 
   local f = csv.open(source_file)
@@ -128,7 +125,14 @@ function parse_cup(source_file, has_labels)
 end
 
 
--- outputs an array of Tensors of targets to a well-formatted CSV file
+--- Write an array of output Tensors to a well-formatted CSV file.
+-- The file will be decorated with the appropriate header and named as specs.team_name.._ML-CUP17-TS.csv.
+-- @param specs Tabel of specifications for the output. That is:
+-- <li> spec.dest_folder Destination folder. Optional. Default: CWD.
+-- <li> spec.full_name Full name of CUP participant(s).
+-- <li> spec.team_name Team name of CUP participant(s).
+-- <li> spec.date Date to attach to results.
+-- @param targets Array-like table of output Tensors. Note the ID corresponds to the ordering.
 function record_cup(specs, targets)
 
   local root = specs.dest_folder or "."

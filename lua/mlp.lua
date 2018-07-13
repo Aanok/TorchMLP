@@ -1,14 +1,18 @@
--- MLP class
 require("torch")
 
--- @module mlp
+-- module
 local mlp = {}
 
--- class table
+-- class
 local MLP = {}
 
 
--- utility function to generate a 2D Tensor with uniform random values in the specified interval
+--- Generate randomized Tensor.
+-- The function generates a Tensor, initializing its values with a uniform distribution.
+-- @param size longStorage defining the Tensor's sizes.
+-- @param low Lower end of the value distribution.
+-- @param up Upper end of the value distribution.
+-- @return The new Tensor.
 local function rand_range(size, low, up)
   local t = torch.rand(size)
   t:mul(up-low)
@@ -16,56 +20,68 @@ local function rand_range(size, low, up)
   return t
 end
 
--- activation function: logistic function
+
+local exp = math.exp --performance
+--- Logistic sigmoid.
+-- Please note exponentiation is accessed through a local to save on an indirection from the global table.
+-- @param x Input scalar.
+-- @return The image of x.
 function sigmoid(x)
-  return 1 / (1 + math.exp(-x))
+  return 1 / (1 + exp(-x))
 end
 
--- derivative of activation function above
-local exp = math.exp --performance
+
+--- Derivative of logistic sigmoid.
+-- Please note exponentiation is accessed through a local to save on an indirection from the global table.
+-- @param x Input scalar.
+-- @return The image of x.
 function sigmoid_der(x)
   return exp(-x) / (1 + exp(-x))^2
 end
 
 
--- squared error for MSE purposes
--- arguments are torch Tensors
+--- Squared error contribution.
+-- Returns the squared 2-norm of x - y.
+-- @param x Input Tensor.
+-- @param y Input Tensor.
+-- @return torch.norm(x - y)^2
 function squared_error(x, y)
     return torch.norm(x - y)^2
 end
 
 
--- euclidean error for MEE purposes
--- arguments are torch Tensors
+--- Euclidean error contribution.
+-- Returns the 2-norm of x - y.
+-- @param x Input Tensor.
+-- @param y Input Tensor.
+-- @return torch.norm(x - y)
 function euclidean_error(x, y)
   return torch.norm(x - y)
 end
 
 
--- constructor
+--- Multi-Layer Perceptron constructor.
+-- @param input_size Dimension of input patterns. Mandatory.
+-- @param output_size Dimension of output patterns. Mandatory.
+-- @param options Table containing optional fields specifying parameters and hyperparameters. All values have defaults to fall back on. The table must be present but it may be empty.
+-- <li>options.neurons: Number of hidden units. Default: 10.</li>
+-- <li>options.init_range: Connection weights are initialized uniformly in [-init_range, init_range]. Default: 0.5.</li>
+-- <li>options.learning_rate: Multiplicative coefficient for delta in gradient descent (eta). Default: 1.</li>
+-- <li>options.momentum: Multiplicative coefficient for momentum contribution in update. Default: 0.</li>
+-- <li>options.penalty: Multiplicative coefficient for L2 regularization term. Default: 0.</li>
+-- <li>options.early_stop_threshold: TR error threshold (after update) that triggers early stop. Default: 0.001.</li>
+-- <li>options.act_fun: Activation function of input-to-hidden layer (real -> real). Default: sigmoid.</li>
+-- <li>options.act_fun_der: Derivative of act_fun (real -> real). Default: sigmoid_der.</li>
+-- &emsp; Note: both act_fun and act_fun_der must be passed or neither will be assigned.
+-- <li>out_fun: Activation function of hidden-to-output layer (real -> real). Default: sigmoid.</li>
+-- <li>out_fun_der: Derivative of out_fun (real -> real)</li>
+-- &emsp; Note: both out_fun and out_fun_der must be passed or neither will be assigned.
+-- <li>postprocess: Postprocessing function to apply to the output (e.g. thresholding or a linear transformation) (Tensor -> Tensor). Default: identity.</li>
+-- &emsp; Note: it is not used during training.</li>
+-- <li>max_epochs: Epoch iteration high end cutoff. Default: 100.</li>
+-- <li>error_metric: Error function, accumulated over all outputs during the epoch, averaged at the end of epoch for final aggregate result ((Tensor, Tensor) -> real). Default: squared_error.</li>
+-- @return The new MLP instance.
 function mlp.new(input_size, output_size, options)
---[[ ARGS:
-  input_size: dimension of input patterns -- mandatory
-  output_size: dimension count of output patterns -- mandatory
-  options: table containing optional fields specifying parameters and hyperparameters
-  all values have defaults to fall back on
-    neurons: # of neurons
-    init_range: connection weights are initialized uniformly in [-init_range, init_range]
-    learning_rate: gradient coefficient for descent
-    momentum: momentum coefficient
-    penalty: L2 regularization term
-    early_stop_threshold: TR error threshold (at epoch) that triggers early stop
-    act_fun: activation function of hidden layer (real -> real)
-    act_fun_der: derivative of act_fun (real -> real)
-      both act_fun and act_fun_der must be passed or neither will be assigned
-    out_fun: activation function of output layer (real -> real)
-    out_fun_der: derivative of out_fun (real -> real)
-      both out_fun and out_fun_der must be passed or neither will be assigned
-    postprocess: postprocessing function to apply to the output (e.g. thresholding or a linear transformation) (Tensor -> Tensor)
-      -- NB it is not used during training, of course
-    max_epochs: epoch iteration high end cutoff
-    error_metric: error function, accumulated over all outputs during the epoch, averaged at the end of epoch for final aggregate result ((Tensor, Tensor) -> real)
-]]--
   local self = {}
   setmetatable(self, { __index = MLP })
   
@@ -95,6 +111,14 @@ function mlp.new(input_size, output_size, options)
 end
 
 
+--- Compute mean error and accuracy over labelled input set.
+-- Iterate over (pattern,label) pairs in the set, accruing an error according to self.error_metric(pattern,label)
+-- and an accuracy measure as per equality between postprocessed outputs and targets.
+-- The error is then averaged, the accuracy normalized to [0,1].
+-- @param set Labelled input set, that is:
+-- &emsp; set[1]: array of input Tensors.
+-- &emsp; set[2]: array of target Tensors, aligned with input.
+-- @return Error, Accuracy
 function MLP:mean_error(set)
   -- accumulate over patterns
   local error_acc = 0
@@ -109,6 +133,11 @@ function MLP:mean_error(set)
 end
 
 
+--- Compute Gradient Descent deltas as per backpropagation.
+-- Single (pattern,label) pair.
+-- @param input Input Tensor.
+-- @param target Target Tensor.
+-- @return hidden-to-output delta, input-to-hidden delta
 function MLP:gd_deltas(input, target)
   local out_out, field_out, out_in, field_in = self:sim_raw(input)
   
@@ -139,6 +168,11 @@ function MLP:gd_deltas(input, target)
 end
 
 
+--- Apply updates to self's weight matrices.
+-- Applies GD, momentum and L2 regularization as per configuration.
+-- @param member_str Must be one of "W_in" or "W_out" to apply the updates to the respective matrices. Undefined behavior otherwise.
+-- @param W_delta Plain GD delta for current epoch.
+-- @param W_delta_old GD delta from previous epoch, for momentum.
 function MLP:update_step(member_str, W_delta, W_delta_old)
   local W = self[member_str]
   -- apply L2 penalty term
@@ -151,6 +185,15 @@ function MLP:update_step(member_str, W_delta, W_delta_old)
 end
 
 
+--- Check conditions for early stop.
+-- Conditions: TR error < self.early_stop_threshold or TR error increasing or VL error increasing or VL accuracy 100%.
+-- @param epoch Counter for the current epoch.
+-- @param traces Table of error traces, such that:
+-- <li>traces.training.error_trace: Array-like table with error measurements over TR set for past epochs. Mandatory.</li>
+-- <li>traces.validation: Table with error and accuracy measurements for the VL set. Optional. If present, the following must be defined and valid:
+-- <ul><li>traces.validation.error_trace: Array-like table with error measurements over VL set for past epochs.</li>
+-- <li>traces.validation.accuracy_trace: Array-like table with accuracy measurements over VL set for past epochs.</li></ul></li>
+-- @return true/false
 function MLP:early_stop(epoch, traces)
   -- aliases help readability and performance
   local tr = traces.training
@@ -191,14 +234,17 @@ function MLP:early_stop(epoch, traces)
   return false
 end
 
-
+--- Train self to convergence over a labelled training set.
+-- Runs main GD with momentum and L2 regularization.
+-- @param training_set Labelled TR set, that is:
+-- &emsp; training_set[1]: array-like table of input Tensors.
+-- &emsp; training_set[2]: array-like table of target Tensors, aligned with input.
+-- @param validation_set Labelled VL set, formatted like training_set. Optional.
+-- @return Table with error traces for TR and, if present, VL, that is:
+-- <li>traces.training.error_trace: Tensor of error measures computed at each epoch.</li>
+-- <li>traces.training.accuracy_trace: Tensor of accuracy measures computed at each epoch.</li>
+-- <li>traces.validation: Likewise.</li>
 function MLP:train_once(training_set, validation_set)
---[[ ARGS:
-	training_set: mandatory
-    training_set[1]: array of input Tensors
-    training_set[2]: array of target Tensors, aligned with input
-  validation_set: likewise, but it is optional
---]]
   -- conveniency aliases (also useful for perfomance)
   local tr_input = training_set[1]
   local tr_targets = training_set[2]
@@ -261,33 +307,25 @@ function MLP:train_once(training_set, validation_set)
 end
 
 
-function MLP:alike()
-  return mlp.new(self.W_in:size(2)-1, self.W_out:size(1), {
-      neurons = self.W_in:size(1),
-      init_range = self.init_range,
-      learning_rate = self.learning_rate,
-      momentum = self.momentum,
-      penalty = self.penalty,
-      early_stop_threshold = self.early_stop_threshold,
-      act_fun = self.act_fun,
-      act_fun_der = self.act_fun_der,
-      out_fun = self.out_fun,
-      out_fun_der = self.out_fun_der,
-      postprocess = self.postprocess,
-      max_epochs = self.max_epochs,
-      error_metric = self.error_metric
-    })
-end
-
-
+--- Reinitialize self's weight matrices to new random values.
+-- Matrices keep their size. New values uniformly distributed in [-self.init_range,self.init_range].
 function MLP:randomize_weights()
   self.W_in = rand_range(self.W_in:size(), -self.init_range,self.init_range)
   self.W_out = rand_range(self.W_out:size(), -self.init_range,self.init_range)
 end
 
 
+--- Train self five times with random starts, take best trial.
+-- Calls self:train_once five times. Chooses model with least final VL error if VL provided, otherwise least final TR error.
+-- @param training_set Labelled TR set, that is:
+-- &emsp; training_set[1]: array-like table of input Tensors.
+-- &emsp; training_set[2]: array-like table of target Tensors, aligned with input.
+-- @param validation_set Labelled VL set, formatted like training_set. Optional.
+-- @return Table with error traces for TR and, if present, VL, that is:
+-- <li>traces.training.error_trace: Tensor of error measures computed at each epoch.</li>
+-- <li>traces.training.accuracy_trace: Tensor of accuracy measures computed at each epoch.</li>
+-- <li>traces.validation: Likewise.</li>
 function MLP:train(training_set, validation_set)
-  -- runs 5 training sessions, takes average (avg. error too)
   local run_length = 5
   local W_in_best, W_out_best
   local traces_best = { training = { error_trace = { math.huge } } }
@@ -295,10 +333,13 @@ function MLP:train(training_set, validation_set)
   for i = 1,run_length do
     self:randomize_weights()
     local traces = self:train_once(training_set, validation_set)
-    if validation_set and traces.validation.error_trace[#traces.validation.error_trace] < traces_best.validation.error_trace[#traces_best.validation.error_trace] then
-      traces_best = traces
-      W_in_best = self.W_in
-      W_out_best = self.W_out
+    if validation_set then
+      -- ignore TR performance if VL available
+      if traces.validation.error_trace[#traces.validation.error_trace] < traces_best.validation.error_trace[#traces_best.validation.error_trace] then
+        traces_best = traces
+        W_in_best = self.W_in
+        W_out_best = self.W_out
+      end
     elseif traces.training.error_trace[#traces.training.error_trace] < traces_best.training.error_trace[#traces_best.training.error_trace] then
       traces_best = traces
       W_in_best = self.W_in
@@ -311,13 +352,15 @@ function MLP:train(training_set, validation_set)
 end
 
 
+--- Run K-fold Cross Validation.
+-- Defines a random partition of set over k regions; runs self:train using each of the regions in turn as VL, the rest TR.
+-- Leaves self trained over the last fold. Computes mean and standard deviation of final VL error.
+-- @param	set Tabel of labelled patterns, that is:
+-- &emsp; set[1] Array-like table of input Tensors.
+-- &emsp; set[2] Array-like table of target Tensors, aligned with input
+-- @param k number of folds
+-- @return validation error mean, validation error standard deviation
 function MLP:k_fold_cross_validate(set, k)
---[[ ARGS:
-	set: labelled patterns
-    set[1]: array of input Tensors
-    set[2]: array of target Tensors, aligned with input
-  k: number of folds
---]]
   local fold_size = math.ceil(#set[1]/k) -- rounding up means favouring VL
   local access = torch.randperm(#set[1]) -- to shuffle the pattern set
   local val_error_mean = 0 -- mean
@@ -352,6 +395,9 @@ function MLP:k_fold_cross_validate(set, k)
 end
 
 
+--- Propagate signal forwards to output. Don't postprocess.
+-- @param input Input Tensor.
+-- @return hidden-to-output output, hidden-to-output activation, input-to-hidden output, input-to-hidden activation
 function MLP:sim_raw(input)
   -- out_fun(W_out * act_fun(W_in * input))
   
@@ -366,6 +412,9 @@ function MLP:sim_raw(input)
 end
 
 
+--- Propagate signal forwards to output. Postprocess in full.
+-- @param input Input Tensor.
+-- @return postprocessed hidden-to-output output, hidden-to-output activation, input-to-hidden output, input-to-hidden activation
 function MLP:sim(input)
   -- postprocess(out_fun(W_out * act_fun(W_in * input)))
   local out_out, field_out, out_in, field_in = self:sim_raw(input)

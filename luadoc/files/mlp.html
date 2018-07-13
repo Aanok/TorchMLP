@@ -1,0 +1,684 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<head>
+    <title>Reference</title>
+    <link rel="stylesheet" href="../luadoc.css" type="text/css" />
+	<!--meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/-->
+</head>
+
+<body>
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+<div id="main">
+
+<div id="navigation">
+
+
+<h1>LuaDoc</h1>
+<ul>
+	
+	<li><a href="../index.html">Index</a></li>
+	
+</ul>
+
+
+<!-- Module list -->
+
+
+
+<!-- File list -->
+
+<h1>Files</h1>
+<ul>
+
+	<li><strong>mlp.lua</strong></li>
+	
+	<li>
+		<a href="../files/utils.html">utils.lua</a>
+	</li>
+
+</ul>
+
+
+
+
+
+
+</div> <!-- id="navigation" -->
+
+<div id="content">
+
+<h1>File <code>mlp.lua</code></h1>
+
+
+
+
+
+
+
+<h2>Functions</h2>
+<table class="function_list">
+
+	<tr>
+	<td class="name" nowrap><a href="#MLP:early_stop">MLP:early_stop</a>&nbsp;(epoch, traces)</td>
+	<td class="summary">Check conditions for early stop.</td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#MLP:gd_deltas">MLP:gd_deltas</a>&nbsp;(input, target)</td>
+	<td class="summary">Compute Gradient Descent deltas as per backpropagation.</td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#MLP:k_fold_cross_validate">MLP:k_fold_cross_validate</a>&nbsp;(set, k)</td>
+	<td class="summary">Run K-fold Cross Validation.</td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#MLP:mean_error">MLP:mean_error</a>&nbsp;(set)</td>
+	<td class="summary">Compute mean error and accuracy over labelled input set.</td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#MLP:randomize_weights">MLP:randomize_weights</a>&nbsp;()</td>
+	<td class="summary">Reinitialize self's weight matrices to new random values.</td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#MLP:sim">MLP:sim</a>&nbsp;(input)</td>
+	<td class="summary">Propagate signal forwards to output.</td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#MLP:sim_raw">MLP:sim_raw</a>&nbsp;(input)</td>
+	<td class="summary">Propagate signal forwards to output.</td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#MLP:train">MLP:train</a>&nbsp;(training_set, validation_set)</td>
+	<td class="summary">Train self five times with random starts, take best trial.</td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#MLP:train_once">MLP:train_once</a>&nbsp;(training_set, validation_set)</td>
+	<td class="summary">Train self to convergence over a labelled training set.</td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#MLP:update_step">MLP:update_step</a>&nbsp;(member_str, W_delta, W_delta_old)</td>
+	<td class="summary">Apply updates to self's weight matrices.</td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#euclidean_error">euclidean_error</a>&nbsp;(x, y)</td>
+	<td class="summary">Euclidean error contribution.</td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#mlp.new">mlp.new</a>&nbsp;(input_size, output_size, options)</td>
+	<td class="summary">Multi-Layer Perceptron constructor.</td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#rand_range">rand_range</a>&nbsp;(size, low, up)</td>
+	<td class="summary">Generate randomized Tensor.</td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#sigmoid">sigmoid</a>&nbsp;(x)</td>
+	<td class="summary">Logistic sigmoid.</td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#sigmoid_der">sigmoid_der</a>&nbsp;(x)</td>
+	<td class="summary">Derivative of logistic sigmoid.</td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#squared_error">squared_error</a>&nbsp;(x, y)</td>
+	<td class="summary">Squared error contribution.</td>
+	</tr>
+
+</table>
+
+
+
+
+
+
+<br/>
+<br/>
+
+
+
+
+<h2><a name="functions"></a>Functions</h2>
+<dl class="function">
+
+
+
+<dt><a name="MLP:early_stop"></a><strong>MLP:early_stop</strong>&nbsp;(epoch, traces)</dt>
+<dd>
+Check conditions for early stop. Conditions: TR error < self.early_stop_threshold or TR error increasing or VL error increasing or VL accuracy 100%.
+
+
+<h3>Parameters</h3>
+<ul>
+	
+	<li>
+	  epoch: Counter for the current epoch.
+	</li>
+	
+	<li>
+	  traces: Table of error traces, such that: <li>traces.training.error_trace: Array-like table with error measurements over TR set for past epochs. Mandatory.</li> <li>traces.validation: Table with error and accuracy measurements for the VL set. Optional. If present, the following must be defined and valid: <ul><li>traces.validation.error_trace: Array-like table with error measurements over VL set for past epochs.</li> <li>traces.validation.accuracy_trace: Array-like table with accuracy measurements over VL set for past epochs.</li></ul></li>
+	</li>
+	
+</ul>
+
+
+
+
+
+
+<h3>Return value:</h3>
+true/false
+
+
+
+</dd>
+
+
+
+
+<dt><a name="MLP:gd_deltas"></a><strong>MLP:gd_deltas</strong>&nbsp;(input, target)</dt>
+<dd>
+Compute Gradient Descent deltas as per backpropagation. Single (pattern,label) pair.
+
+
+<h3>Parameters</h3>
+<ul>
+	
+	<li>
+	  input: Input Tensor.
+	</li>
+	
+	<li>
+	  target: Target Tensor.
+	</li>
+	
+</ul>
+
+
+
+
+
+
+<h3>Return value:</h3>
+hidden-to-output delta, input-to-hidden delta
+
+
+
+</dd>
+
+
+
+
+<dt><a name="MLP:k_fold_cross_validate"></a><strong>MLP:k_fold_cross_validate</strong>&nbsp;(set, k)</dt>
+<dd>
+Run K-fold Cross Validation. Defines a random partition of set over k regions; runs self:train using each of the regions in turn as VL, the rest TR. Leaves self trained over the last fold. Computes mean and standard deviation of final VL error.
+
+
+<h3>Parameters</h3>
+<ul>
+	
+	<li>
+	  set: Tabel of labelled patterns, that is: &emsp; set[1] Array-like table of input Tensors. &emsp; set[2] Array-like table of target Tensors, aligned with input
+	</li>
+	
+	<li>
+	  k: number of folds
+	</li>
+	
+</ul>
+
+
+
+
+
+
+<h3>Return value:</h3>
+validation error mean, validation error standard deviation
+
+
+
+</dd>
+
+
+
+
+<dt><a name="MLP:mean_error"></a><strong>MLP:mean_error</strong>&nbsp;(set)</dt>
+<dd>
+Compute mean error and accuracy over labelled input set. Iterate over (pattern,label) pairs in the set, accruing an error according to self.error_metric(pattern,label) and an accuracy measure as per equality between postprocessed outputs and targets. The error is then averaged, the accuracy normalized to [0,1].
+
+
+<h3>Parameters</h3>
+<ul>
+	
+	<li>
+	  set: Labelled input set, that is: &emsp; set[1]: array of input Tensors. &emsp; set[2]: array of target Tensors, aligned with input.
+	</li>
+	
+</ul>
+
+
+
+
+
+
+<h3>Return value:</h3>
+Error, Accuracy
+
+
+
+</dd>
+
+
+
+
+<dt><a name="MLP:randomize_weights"></a><strong>MLP:randomize_weights</strong>&nbsp;()</dt>
+<dd>
+Reinitialize self's weight matrices to new random values. Matrices keep their size. New values uniformly distributed in [-self.init_range,self.init_range].
+
+
+
+
+
+
+
+
+
+</dd>
+
+
+
+
+<dt><a name="MLP:sim"></a><strong>MLP:sim</strong>&nbsp;(input)</dt>
+<dd>
+Propagate signal forwards to output. Postprocess in full.
+
+
+<h3>Parameters</h3>
+<ul>
+	
+	<li>
+	  input: Input Tensor.
+	</li>
+	
+</ul>
+
+
+
+
+
+
+<h3>Return value:</h3>
+postprocessed hidden-to-output output, hidden-to-output activation, input-to-hidden output, input-to-hidden activation
+
+
+
+</dd>
+
+
+
+
+<dt><a name="MLP:sim_raw"></a><strong>MLP:sim_raw</strong>&nbsp;(input)</dt>
+<dd>
+Propagate signal forwards to output. Don't postprocess.
+
+
+<h3>Parameters</h3>
+<ul>
+	
+	<li>
+	  input: Input Tensor.
+	</li>
+	
+</ul>
+
+
+
+
+
+
+<h3>Return value:</h3>
+hidden-to-output output, hidden-to-output activation, input-to-hidden output, input-to-hidden activation
+
+
+
+</dd>
+
+
+
+
+<dt><a name="MLP:train"></a><strong>MLP:train</strong>&nbsp;(training_set, validation_set)</dt>
+<dd>
+Train self five times with random starts, take best trial. Calls self:train_once five times. Chooses model with least final VL error if VL provided, otherwise least final TR error.
+
+
+<h3>Parameters</h3>
+<ul>
+	
+	<li>
+	  training_set: Labelled TR set, that is: &emsp; training_set[1]: array-like table of input Tensors. &emsp; training_set[2]: array-like table of target Tensors, aligned with input.
+	</li>
+	
+	<li>
+	  validation_set: Labelled VL set, formatted like training_set. Optional.
+	</li>
+	
+</ul>
+
+
+
+
+
+
+<h3>Return value:</h3>
+Table with error traces for TR and, if present, VL, that is: <li>traces.training.error_trace: Tensor of error measures computed at each epoch.</li> <li>traces.training.accuracy_trace: Tensor of accuracy measures computed at each epoch.</li> <li>traces.validation: Likewise.</li>
+
+
+
+</dd>
+
+
+
+
+<dt><a name="MLP:train_once"></a><strong>MLP:train_once</strong>&nbsp;(training_set, validation_set)</dt>
+<dd>
+Train self to convergence over a labelled training set. Runs main GD with momentum and L2 regularization.
+
+
+<h3>Parameters</h3>
+<ul>
+	
+	<li>
+	  training_set: Labelled TR set, that is: &emsp; training_set[1]: array-like table of input Tensors. &emsp; training_set[2]: array-like table of target Tensors, aligned with input.
+	</li>
+	
+	<li>
+	  validation_set: Labelled VL set, formatted like training_set. Optional.
+	</li>
+	
+</ul>
+
+
+
+
+
+
+<h3>Return value:</h3>
+Table with error traces for TR and, if present, VL, that is: <li>traces.training.error_trace: Tensor of error measures computed at each epoch.</li> <li>traces.training.accuracy_trace: Tensor of accuracy measures computed at each epoch.</li> <li>traces.validation: Likewise.</li>
+
+
+
+</dd>
+
+
+
+
+<dt><a name="MLP:update_step"></a><strong>MLP:update_step</strong>&nbsp;(member_str, W_delta, W_delta_old)</dt>
+<dd>
+Apply updates to self's weight matrices. Applies GD, momentum and L2 regularization as per configuration.
+
+
+<h3>Parameters</h3>
+<ul>
+	
+	<li>
+	  member_str: Must be one of "W_in" or "W_out" to apply the updates to the respective matrices. Undefined behavior otherwise.
+	</li>
+	
+	<li>
+	  W_delta: Plain GD delta for current epoch.
+	</li>
+	
+	<li>
+	  W_delta_old: GD delta from previous epoch, for momentum.
+	</li>
+	
+</ul>
+
+
+
+
+
+
+
+
+</dd>
+
+
+
+
+<dt><a name="euclidean_error"></a><strong>euclidean_error</strong>&nbsp;(x, y)</dt>
+<dd>
+Euclidean error contribution. Returns the 2-norm of x - y.
+
+
+<h3>Parameters</h3>
+<ul>
+	
+	<li>
+	  x: Input Tensor.
+	</li>
+	
+	<li>
+	  y: Input Tensor.
+	</li>
+	
+</ul>
+
+
+
+
+
+
+<h3>Return value:</h3>
+torch.norm(x - y)
+
+
+
+</dd>
+
+
+
+
+<dt><a name="mlp.new"></a><strong>mlp.new</strong>&nbsp;(input_size, output_size, options)</dt>
+<dd>
+Multi-Layer Perceptron constructor.
+
+
+<h3>Parameters</h3>
+<ul>
+	
+	<li>
+	  input_size: Dimension of input patterns. Mandatory.
+	</li>
+	
+	<li>
+	  output_size: Dimension of output patterns. Mandatory.
+	</li>
+	
+	<li>
+	  options: Table containing optional fields specifying parameters and hyperparameters. All values have defaults to fall back on. The table must be present but it may be empty. <li>options.neurons: Number of hidden units. Default: 10.</li> <li>options.init_range: Connection weights are initialized uniformly in [-init_range, init_range]. Default: 0.5.</li> <li>options.learning_rate: Multiplicative coefficient for delta in gradient descent (eta). Default: 1.</li> <li>options.momentum: Multiplicative coefficient for momentum contribution in update. Default: 0.</li> <li>options.penalty: Multiplicative coefficient for L2 regularization term. Default: 0.</li> <li>options.early_stop_threshold: TR error threshold (after update) that triggers early stop. Default: 0.001.</li> <li>options.act_fun: Activation function of input-to-hidden layer (real -> real). Default: sigmoid.</li> <li>options.act_fun_der: Derivative of act_fun (real -> real). Default: sigmoid_der.</li> &emsp; Note: both act_fun and act_fun_der must be passed or neither will be assigned. <li>out_fun: Activation function of hidden-to-output layer (real -> real). Default: sigmoid.</li> <li>out_fun_der: Derivative of out_fun (real -> real)</li> &emsp; Note: both out_fun and out_fun_der must be passed or neither will be assigned. <li>postprocess: Postprocessing function to apply to the output (e.g. thresholding or a linear transformation) (Tensor -> Tensor). Default: identity.</li> &emsp; Note: it is not used during training.</li> <li>max_epochs: Epoch iteration high end cutoff. Default: 100.</li> <li>error_metric: Error function, accumulated over all outputs during the epoch, averaged at the end of epoch for final aggregate result ((Tensor, Tensor) -> real). Default: squared_error.</li>
+	</li>
+	
+</ul>
+
+
+
+
+
+
+<h3>Return value:</h3>
+The new MLP instance.
+
+
+
+</dd>
+
+
+
+
+<dt><a name="rand_range"></a><strong>rand_range</strong>&nbsp;(size, low, up)</dt>
+<dd>
+Generate randomized Tensor. The function generates a Tensor, initializing its values with a uniform distribution.
+
+
+<h3>Parameters</h3>
+<ul>
+	
+	<li>
+	  size: longStorage defining the Tensor's sizes.
+	</li>
+	
+	<li>
+	  low: Lower end of the value distribution.
+	</li>
+	
+	<li>
+	  up: Upper end of the value distribution.
+	</li>
+	
+</ul>
+
+
+
+
+
+
+<h3>Return value:</h3>
+The new Tensor.
+
+
+
+</dd>
+
+
+
+
+<dt><a name="sigmoid"></a><strong>sigmoid</strong>&nbsp;(x)</dt>
+<dd>
+Logistic sigmoid. Please note exponentiation is accessed through a local to save on an indirection from the global table.
+
+
+<h3>Parameters</h3>
+<ul>
+	
+	<li>
+	  x: Input scalar.
+	</li>
+	
+</ul>
+
+
+
+
+
+
+<h3>Return value:</h3>
+The image of x.
+
+
+
+</dd>
+
+
+
+
+<dt><a name="sigmoid_der"></a><strong>sigmoid_der</strong>&nbsp;(x)</dt>
+<dd>
+Derivative of logistic sigmoid. Please note exponentiation is accessed through a local to save on an indirection from the global table.
+
+
+<h3>Parameters</h3>
+<ul>
+	
+	<li>
+	  x: Input scalar.
+	</li>
+	
+</ul>
+
+
+
+
+
+
+<h3>Return value:</h3>
+The image of x.
+
+
+
+</dd>
+
+
+
+
+<dt><a name="squared_error"></a><strong>squared_error</strong>&nbsp;(x, y)</dt>
+<dd>
+Squared error contribution. Returns the squared 2-norm of x - y.
+
+
+<h3>Parameters</h3>
+<ul>
+	
+	<li>
+	  x: Input Tensor.
+	</li>
+	
+	<li>
+	  y: Input Tensor.
+	</li>
+	
+</ul>
+
+
+
+
+
+
+<h3>Return value:</h3>
+torch.norm(x - y)^2
+
+
+
+</dd>
+
+
+</dl>
+
+
+
+
+
+
+
+</div> <!-- id="content" -->
+
+</div> <!-- id="main" -->
+
+<div id="about">
+	<p><a href="http://validator.w3.org/check?uri=referer"><img src="http://www.w3.org/Icons/valid-xhtml10" alt="Valid XHTML 1.0!" height="31" width="88" /></a></p>
+</div> <!-- id="about" -->
+
+</div> <!-- id="container" -->	
+</body>
+</html>

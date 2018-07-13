@@ -1,0 +1,210 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<head>
+    <title>Reference</title>
+    <link rel="stylesheet" href="../luadoc.css" type="text/css" />
+	<!--meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/-->
+</head>
+
+<body>
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+<div id="main">
+
+<div id="navigation">
+
+
+<h1>LuaDoc</h1>
+<ul>
+	
+	<li><a href="../index.html">Index</a></li>
+	
+</ul>
+
+
+<!-- Module list -->
+
+
+
+<!-- File list -->
+
+<h1>Files</h1>
+<ul>
+
+	<li>
+		<a href="../files/mlp.html">mlp.lua</a>
+	</li>
+
+	<li><strong>utils.lua</strong></li>
+	
+</ul>
+
+
+
+
+
+
+</div> <!-- id="navigation" -->
+
+<div id="content">
+
+<h1>File <code>utils.lua</code></h1>
+
+
+
+
+
+
+
+<h2>Functions</h2>
+<table class="function_list">
+
+	<tr>
+	<td class="name" nowrap><a href="#parse_cup">parse_cup</a>&nbsp;(source_file, has_labels)</td>
+	<td class="summary">Parse ML-CUP data file Parses provided CSV file, applying normalization to input and targets.</td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#parse_monks">parse_monks</a>&nbsp;(source_file)</td>
+	<td class="summary">Parse MONKS data file Parses provided CSV file, applying one-hot encoding to input.</td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#record_cup">record_cup</a>&nbsp;(specs, targets)</td>
+	<td class="summary">Write an array of output Tensors to a well-formatted CSV file.</td>
+	</tr>
+
+</table>
+
+
+
+
+
+
+<br/>
+<br/>
+
+
+
+
+<h2><a name="functions"></a>Functions</h2>
+<dl class="function">
+
+
+
+<dt><a name="parse_cup"></a><strong>parse_cup</strong>&nbsp;(source_file, has_labels)</dt>
+<dd>
+Parse ML-CUP data file Parses provided CSV file, applying normalization to input and targets.
+
+
+<h3>Parameters</h3>
+<ul>
+	
+	<li>
+	  source_file: Path to file with ML-CUP data to parse.
+	</li>
+	
+	<li>
+	  has_labels: Boolean to distinguish labelled (TR) and unlabelled (TS) sources.
+	</li>
+	
+</ul>
+
+
+
+
+
+
+<h3>Return value:</h3>
+input,targets, t_min, t_max where <li>input: Array-like table with Tensors of input patterns.</li> <li>targets: Array-like table with Tensors of target patterns. nil if has_labels == false.</li> <li>t_min: Minimum of target patterns. nil if has_labels == false.</li> <li>t_max: Maximum of target patterns. nil if has_labels == false.</li>
+
+
+
+</dd>
+
+
+
+
+<dt><a name="parse_monks"></a><strong>parse_monks</strong>&nbsp;(source_file)</dt>
+<dd>
+Parse MONKS data file Parses provided CSV file, applying one-hot encoding to input.
+
+
+<h3>Parameters</h3>
+<ul>
+	
+	<li>
+	  source_file: Path to file with Monk data to parse.
+	</li>
+	
+</ul>
+
+
+
+
+
+
+<h3>Return value:</h3>
+input,targets where <li>input: Array-like table with Tensors of input patterns.</li> <li>targets: Array-like table with Tensors of target patterns.</li>
+
+
+
+</dd>
+
+
+
+
+<dt><a name="record_cup"></a><strong>record_cup</strong>&nbsp;(specs, targets)</dt>
+<dd>
+Write an array of output Tensors to a well-formatted CSV file. The file will be decorated with the appropriate header and named as specs.team_name.._ML-CUP17-TS.csv.
+
+
+<h3>Parameters</h3>
+<ul>
+	
+	<li>
+	  specs: Tabel of specifications for the output. That is: <li> spec.dest_folder Destination folder. Optional. Default: CWD. <li> spec.full_name Full name of CUP participant(s). <li> spec.team_name Team name of CUP participant(s). <li> spec.date Date to attach to results.
+	</li>
+	
+	<li>
+	  targets: Array-like table of output Tensors. Note the ID corresponds to the ordering.
+	</li>
+	
+</ul>
+
+
+
+
+
+
+
+
+</dd>
+
+
+</dl>
+
+
+
+
+
+
+
+</div> <!-- id="content" -->
+
+</div> <!-- id="main" -->
+
+<div id="about">
+	<p><a href="http://validator.w3.org/check?uri=referer"><img src="http://www.w3.org/Icons/valid-xhtml10" alt="Valid XHTML 1.0!" height="31" width="88" /></a></p>
+</div> <!-- id="about" -->
+
+</div> <!-- id="container" -->	
+</body>
+</html>
