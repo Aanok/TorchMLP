@@ -2,7 +2,7 @@
 ## Requirements
 * [Torch](https://github.com/torch/torch7), single strict requirement for the network on its own.
 * [lua-CSV](https://github.com/geoffleyland/lua-csv) to parse the datasets.
-* [Torch/gnuplot](https://github.com/torch/gnuplot) and [gnuplot](http://www.gnuplot.info/) to generatr graphs during tests.
+* [Torch/gnuplot](https://github.com/torch/gnuplot) and [gnuplot](http://www.gnuplot.info/) to generate graphs during tests.
 
 Torch can be installed [headless](http://torch.ch/docs/getting-started.html#_) or from your package manager.
 
