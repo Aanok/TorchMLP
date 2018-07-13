@@ -14,7 +14,7 @@ function parse_monks(source_file)
   input: Lua table with Torch tensors of input patterns
   targets: Lua table with Torch tensors of target patterns
 --]]
-  if (source_file == nil) then error "Missing file argument" end
+  if (source_file == nil) then error("Missing file argument") end
 
   -- separator isn't actually a comma but blankspace
   local f = csv.open(source_file, {separator = ' '})
@@ -62,7 +62,7 @@ end
 
 
 -- this will parse an ML-CUP data file
-function parse_cup(source_file)
+function parse_cup(source_file, has_labels)
 --[[
   ARGS:
   source_file: file with CUP data to parse
@@ -71,7 +71,7 @@ function parse_cup(source_file)
   input: Lua table with Torch tensors of input patterns
   targets: Lua table with Torch tensors of target patterns
 --]]
-  if (source_file == nil) then error "Missing file argument" end
+  if (source_file == nil) then error("Missing file argument") end
 
   local f = csv.open(source_file)
   
@@ -79,8 +79,10 @@ function parse_cup(source_file)
   local input = {}
   local targets = {}
   -- metadata for normalization
-  local in_min, in_max = math.huge, -math.huge
-  local t_min, t_max = math.huge, -math.huge
+  local in_min = math.huge
+  local in_max = -math.huge
+  local t_min =  math.huge
+  local t_max = -math.huge
   --line counter
   local line = 0
   for fields in f:lines() do
@@ -88,7 +90,6 @@ function parse_cup(source_file)
     -- ignore the header
     if line >= 10 then
       input[#input + 1] = torch.Tensor(10)
-      targets[#targets + 1] = torch.Tensor(2)
       -- first field is the separator
       -- second field is the ID, which we don't need (it is encoded by the order)
       for i = 2,11 do
@@ -97,26 +98,55 @@ function parse_cup(source_file)
         if value > in_max then in_max = value end
         if value < in_min then in_min = value end
       end
-      for i = 12,13 do
-        local value = tonumber(fields[i])
-        targets[#targets][i-11] = value
-        if value > t_max then t_max = value end
-        if value < t_min then t_min = value end
+      if has_labels then
+        targets[#targets + 1] = torch.Tensor(2)
+        for i = 12,13 do
+          local value = tonumber(fields[i])
+          targets[#targets][i-11] = value
+          if value > t_max then t_max = value end
+          if value < t_min then t_min = value end
+        end
       end
     end
   end
   
   -- normalization
-  local range = in_max - in_min
+  local range = in_max -in_min
   for _,v in ipairs(input) do
     v:add(-in_min)
     v:div(range)
   end
-  range = t_max - t_min
-  for _,v in ipairs(targets) do
-    v:add(-t_min)
-    v:div(range)
+  if has_labels then
+    range = t_max -t_min
+    for _,v in ipairs(targets) do
+      v:add(-t_min)
+      v:div(range)
+    end
   end
   
   return input, targets, t_min, t_max
+end
+
+
+-- outputs an array of Tensors of targets to a well-formatted CSV file
+function record_cup(specs, targets)
+
+  local root = specs.dest_folder or "."
+  local f = io.open(root .. "/" .. specs.team_name .. "_ML-CUP17-TS.csv", "w+b")
+  io.output(f)
+  
+  -- header
+  print("# " .. specs.full_name)
+  print('# ' .. specs.team_name)
+  print('# ML-CUP17 v1')
+  print("# " .. specs.date)
+  
+  -- patterns; NB identifier is encoded by order!
+  for i,v in ipairs(targets) do
+    print(i .. "," .. v[1] .. "," .. v[2])
+  end
+  
+  print()
+  io.close()
+  io.output(io.stdout)
 end

@@ -61,7 +61,7 @@ function mlp.new(input_size, output_size, options)
     out_fun: activation function of output layer (real -> real)
     out_fun_der: derivative of out_fun (real -> real)
       both out_fun and out_fun_der must be passed or neither will be assigned
-    postprocess: postprocessing function to apply to the output (e.g. thresholding or a linear transformation) (real -> real)
+    postprocess: postprocessing function to apply to the output (e.g. thresholding or a linear transformation) (Tensor -> Tensor)
       -- NB it is not used during training, of course
     max_epochs: epoch iteration high end cutoff
     error_metric: error function, accumulated over all outputs during the epoch, averaged at the end of epoch for final aggregate result ((Tensor, Tensor) -> real)
@@ -73,9 +73,9 @@ function mlp.new(input_size, output_size, options)
   self.init_range = options.init_range or 0.5
   self.W_in = rand_range(torch.LongStorage({neurons, input_size +1}), -self.init_range,self.init_range)
   self.W_out = rand_range(torch.LongStorage({output_size, neurons +1}), -self.init_range,self.init_range)
-  self.learning_rate = options.learning_rate or 0.1
-  self.momentum = options.momentum or 0.01
-  self.penalty = options.penalty or 0.01
+  self.learning_rate = options.learning_rate or 1
+  self.momentum = options.momentum or 0
+  self.penalty = options.penalty or 0
   self.early_stop_threshold = options.early_stop_threshold or 0.001
   if options.act_fun and options.act_fun_der then
     self.act_fun, self.act_fun_der = options.act_fun, options.act_fun_der
@@ -102,7 +102,7 @@ function MLP:mean_error(set)
   for i,p in ipairs(set[1]) do
     local raw_output = self:sim_raw(p)
     error_acc = error_acc + self.error_metric(raw_output, set[2][i])
-    if torch.equal(raw_output:apply(self.postprocess), set[2][i]) then well_classified = well_classified + 1 end
+    if torch.equal(self.postprocess(raw_output), set[2][i]) then well_classified = well_classified + 1 end
   end
   -- then average/reduce
   return error_acc/#set[1], well_classified/#set[1]
@@ -295,7 +295,6 @@ function MLP:train(training_set, validation_set)
   for i = 1,run_length do
     self:randomize_weights()
     local traces = self:train_once(training_set, validation_set)
-    --print(traces.training)
     if validation_set and traces.validation.error_trace[#traces.validation.error_trace] < traces_best.validation.error_trace[#traces_best.validation.error_trace] then
       traces_best = traces
       W_in_best = self.W_in
@@ -370,7 +369,7 @@ end
 function MLP:sim(input)
   -- postprocess(out_fun(W_out * act_fun(W_in * input)))
   local out_out, field_out, out_in, field_in = self:sim_raw(input)
-  out_out:apply(self.postprocess)
+  self.postprocess(out_out)
 	return out_out, field_out, out_in, field_in
 end
 
