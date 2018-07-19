@@ -2,7 +2,7 @@
 
 local csv = require("csv")
 local torch = require("torch")
-
+require("gnuplot")
 
 --- Parse MONKS data file
 -- Parses provided CSV file, applying one-hot encoding to input.
@@ -153,4 +153,59 @@ function record_cup(specs, targets)
   print()
   io.close()
   io.output(io.stdout)
+end
+
+
+--- Generate EPS plots for a MONKS problem.
+-- The file name will tell about the employed hyperparameters.
+-- @param traces Standard error/accuracy trace table. traces.validation is required.
+-- @param nn Neural network that generated the traces. Hyperparameters are read from it.
+-- @param num MONKS dataset enumerator (1, 2 or 3)
+-- @param is_test Boolean indicating if traces.validation represents a Test set or Validation set.
+function gnuplot_monks(traces, nn, num, is_test)
+  local params_string = "_lr=" .. nn.learning_rate .. "_p=" .. nn.penalty .. "_m=" .. nn.momentum
+  local test_validation = is_test and "Test" or "Validation"
+  local filename = "monks-" .. num .. (is_test and "_test" or "_validation") .. "_error" .. params_string .. ".eps"
+  gnuplot.epsfigure(filename)
+  gnuplot.raw('set title "Monks-' .. num .. '" font ",20"')
+  gnuplot.raw('set xlabel "Epochs" font ",20"')
+  gnuplot.raw('set key font ",20"')
+  gnuplot.raw('set xtics font ",20"')
+  gnuplot.raw('set ytics font ",20"')
+  gnuplot.plot( {"Training MSE", traces.training.error_trace, 'with lines lw 2 lc "red"'},
+                {test_validation .. " MSE", traces.validation.error_trace, 'with lines lw 2 dt "." lc "blue"'})
+  gnuplot.plotflush()
+  filename = "monks-" .. num .. (is_test and "_test" or "_validation") .. "_accuracy" .. params_string .. ".eps"
+  gnuplot.epsfigure(filename)
+  gnuplot.movelegend("right", "bottom")
+  gnuplot.raw('set title "Monks-' .. num .. '" font ",20"')
+  gnuplot.raw('set xlabel "Epochs" font ",20"')
+  gnuplot.raw('set key font ",20"')
+  gnuplot.raw('set xtics font ",20"')
+  gnuplot.raw('set ytics font ",20"')
+  gnuplot.plot( {"Training accuracy", traces.training.accuracy_trace, 'with lines lw 2 lc "red"'},
+                {test_validation .. " accuracy", traces.validation.accuracy_trace, 'with lines lw 2 dt "." lc "blue"'})
+  gnuplot.plotflush()
+end
+
+
+--- Generate EPS plots for ML-CUP.
+-- The file name will tell about the employed hyperparameters.
+-- @param traces Standard error/accuracy trace table. traces.validation is optional.
+-- @param nn Neural network that generated the traces. Hyperparameters are read from it.
+function gnuplot_cup(traces, nn)
+  local params_string = (traces.validation and "_validation" or "_test") .. "_lr=" .. nn.learning_rate .. "_p=" .. nn.penalty .. "_m=" .. nn.momentum
+  gnuplot.epsfigure("cup_error" .. params_string .. ".eps")
+  gnuplot.raw('set title "ML-CUP17" font ",20"')
+  gnuplot.raw('set xlabel "Epochs" font ",20"')
+  gnuplot.raw('set key font ",20"')
+  gnuplot.raw('set xtics font ",20"')
+  gnuplot.raw('set ytics font ",20"')
+  if traces.validation then
+    gnuplot.plot({"Training MEE", traces.training.error_trace, 'with lines lw 2 lc "red"'},
+                 {"Validation MEE", traces.validation.error_trace, 'with lines lw 2 dt "." lc "blue"'})
+  else
+    gnuplot.plot({"Training MEE", traces.training.error_trace, 'with lines lw 2 lc "red"'})
+  end
+  gnuplot.plotflush()
 end

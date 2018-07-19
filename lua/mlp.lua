@@ -200,7 +200,7 @@ function MLP:early_stop(epoch, traces)
   local val = traces.validation
   
   -- tr_error < threshold
-  -- averaged over last 10 epochs
+  -- moving average over last 10 epochs
   tr.new_error = tr.new_error + tr.error_trace[epoch]/10
   if epoch > 10 then
     tr.new_error = tr.new_error - tr.error_trace[epoch - 10]/10
@@ -208,14 +208,14 @@ function MLP:early_stop(epoch, traces)
     if tr.new_error < self.early_stop_threshold then return true end
   end
   -- tr_error incresing
-  -- averaged over last 20 epochs, 10 and 10
+  -- moving averages over last 20 epochs, 10 and 10
   if epoch > 20 then
     tr.old_error = tr.old_error - tr.error_trace[epoch - 20]/10
     if tr.new_error > tr.old_error then return true end
   end
   
   -- validation error is increasing
-  -- averaged over the last 20 epochs, 10 and 10
+  -- moving averages over the last 20 epochs, 10 and 10
   if val then
     val.new_error = val.new_error + val.error_trace[epoch]
     if epoch > 10 then
@@ -233,6 +233,7 @@ function MLP:early_stop(epoch, traces)
   if val and val.accuracy_trace[epoch] == 1 then return true end
   return false
 end
+
 
 --- Train self to convergence over a labelled training set.
 -- Runs main GD with momentum and L2 regularization.
@@ -351,6 +352,41 @@ function MLP:train(training_set, validation_set)
   return traces_best
 end
 
+local huge = math.huge
+local min = math.min
+local max = math.max
+local function join_error_tensors(x, y, fun)
+  if x:size(1) < y:size(1) then
+    x = x:cat(torch.Tensor(y:size(1) - x:size(1)):fill(x[x:size(1)]))
+  elseif x:size(1) > y:size(1) then
+    y = y:cat(torch.Tensor(x:size(1) - y:size(1)):fill(y[y:size(1)]))
+  end
+  return x:add(y)
+end
+
+
+--- Extends a vector to length len.
+-- New elements will be copies of the last element of x.
+-- REQUIRES: len >= x:size(1)
+-- @param x Torch one-dimensional Tensor.
+-- @param len Integer length of new vector.
+-- @return The new extended vector.
+local function trail_vector_to(x, len)
+  return x:cat(torch.Tensor(len - x:size(1)):fill(x[x:size(1)]))
+end
+
+
+--- Adds error and accuracy traces from addendum to accumulator.
+-- Private conveniency function.
+-- @param accumulator Formatted like a standard trace table.
+-- @param addendum Formatted like a standard trace table.
+local function join_traces(accumulator, addendum)
+  for k,acc_err in pairs(accumulator) do
+    acc_err.error_trace:add(trail_vector_to(addendum[k].error_trace, acc_err.error_trace:size(1)))
+    acc_err.accuracy_trace:add(trail_vector_to(addendum[k].accuracy_trace, acc_err.accuracy_trace:size(1)))
+  end
+end
+
 
 --- Run K-fold Cross Validation.
 -- Defines a random partition of set over k regions; runs self:train using each of the regions in turn as VL, the rest TR.
@@ -359,12 +395,27 @@ end
 -- &emsp; set[1] Array-like table of input Tensors.
 -- &emsp; set[2] Array-like table of target Tensors, aligned with input
 -- @param k number of folds
--- @return validation error mean, validation error standard deviation
+-- @return Table with error traces for the CV averaged over the folds, that is:
+-- <li>traces.training.error_trace: Tensor of error measures computed at each epoch.</li>
+-- <li>traces.training.accuracy_trace: Tensor of accuracy measures computed at each epoch.</li>
+-- <li>traces.validation: Likewise.</li>
+-- <li>traces.validation.error_mean: final mean error for VS.</li>
+-- <li>traces.validation.error_sd: standard deviation of final mean error for VS.</li>
 function MLP:k_fold_cross_validate(set, k)
   local fold_size = math.ceil(#set[1]/k) -- rounding up means favouring VL
   local access = torch.randperm(#set[1]) -- to shuffle the pattern set
-  local val_error_mean = 0 -- mean
-  local val_error_sd = 0 -- standard deviation
+  local val_errors = torch.Tensor(k) -- store values to compute standard deviation
+  local longest_run = 0 -- highes epoch cutoff; we'll trim the results up to this
+  local mean_traces = {
+    training = {
+      error_trace = torch.zeros(self.max_epochs),
+      accuracy_trace = torch.zeros(self.max_epochs)
+    },
+    validation = {
+      error_trace = torch.zeros(self.max_epochs),
+      accuracy_trace = torch.zeros(self.max_epochs)
+    }
+  }
   -- iterate folds
   for i = 1,k do
     local tr_fold = {{},{}}
@@ -381,17 +432,26 @@ function MLP:k_fold_cross_validate(set, k)
     end
     -- retrain from new random start
     self:randomize_weights()
-    self:train(tr_fold)
-    -- assess and compound measurements
-    local val_error = self:mean_error(val_fold)
-    val_error_mean = val_error_mean + val_error
-    val_error_sd = val_error_sd + (val_error - val_error_mean)^2
+    local fold_traces = self:train(tr_fold, val_fold)
+    -- bookkeeping for statistical analysis
+    longest_run = math.max(longest_run, fold_traces.training.error_trace:size(1))
+    val_errors[k] = fold_traces.validation.error_trace[#fold_traces.validation.error_trace]
+    join_traces(mean_traces, fold_traces)
   end
   -- finalize measurements
-  val_error_mean = val_error_mean / k
-  val_error_sd = val_error_sd / (k - 1)
-  val_error_sd = math.sqrt(val_error_sd)
-  return val_error_mean, val_error_sd
+  for tr_vs_name,tr_vs in pairs(mean_traces) do
+    for err_acc_name,err_acc in pairs(tr_vs) do
+      -- averages
+      mean_traces[tr_vs_name][err_acc_name] = err_acc:sub(1, longest_run):div(k)
+    end
+  end
+  local val_error_sd = 0
+  local val_error_mean = mean_traces.validation.error_trace[#mean_traces.validation.error_trace]
+  val_errors:apply(function(x) val_error_sd = val_error_sd + (x - val_error_mean)^2 end)
+  val_error_sd = math.sqrt(val_error_sd) / k
+  mean_traces.validation.error_mean = val_error_mean
+  mean_traces.validation.error_sd = val_error_sd
+  return mean_traces
 end
 
 

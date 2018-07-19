@@ -8,8 +8,7 @@ local t_min, t_max
 training[1], training[2], t_min, t_max = parse_cup("../cup/ML-CUP17-TR.csv", true)
 training.name = "ML-CUP17-TR"
 
-local test = {}
-test, a1, a2, a3 = parse_cup("../cup/ML-CUP17-TS.csv", false)
+local test, _, _, _ = parse_cup("../cup/ML-CUP17-TS.csv", false)
 test.name = "ML-CUP17-TS"
 
 local range = t_max - t_min
@@ -36,12 +35,13 @@ for _,lr in ipairs({15,10,1,0.5,0.1}) do
         nn.momentum = m
         nn.penalty = p
         local t1 = timer:time().real
-        local e_mean, e_sd = nn:k_fold_cross_validate(training, 5)
+        local fold_trace = nn:k_fold_cross_validate(training, 5)
         local t2 = timer:time().real
         print("5-fold CV completed in " ..  t2 - t1 .. " seconds. Data:")
-        trace[#trace + 1] = {lr = lr, m = m, p = p, e_mean = e_mean, e_sd = e_sd, time = t2 - t1}
+        trace[#trace + 1] = {lr = lr, m = m, p = p, e_mean = fold_trace.validation.error_mean, e_sd = fold_trace.validation.error_sd, time = t2 - t1}
         print(trace[#trace])
-        if e_mean < best.e_mean then
+        gnuplot_cup(trace, nn)
+        if fold_trace.validation.error_mean < best.e_mean then
           best = trace[#trace]
           print("Selected as current best hyperparameters.")
         end
@@ -57,15 +57,7 @@ nn.learning_rate = best.lr
 nn.penalty = best.p
 nn.momentum = best.m
 local traces = nn:train(training)
-gnuplot.epsfigure("cup_error.eps")
-gnuplot.raw('set title "ML-CUP17" font ",20"')
-gnuplot.raw('set xlabel "Epochs" font ",20"')
-gnuplot.raw('set key font ",20"')
-gnuplot.raw('set xtics font ",20"')
-gnuplot.raw('set ytics font ",20"')
-gnuplot.plot({"Training MEE", traces.training.error_trace, 'with lines lw 1 lc "red"'})
-gnuplot.plotflush()
-
+gnuplot_cup(traces, nn)
 local results = {}
 for i,v in ipairs(test) do
   results[i] = nn:sim(v)

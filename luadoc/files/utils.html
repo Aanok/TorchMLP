@@ -67,6 +67,16 @@
 <table class="function_list">
 
 	<tr>
+	<td class="name" nowrap><a href="#gnuplot_cup">gnuplot_cup</a>&nbsp;(traces, nn)</td>
+	<td class="summary">Generate EPS plots for ML-CUP.</td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#gnuplot_monks">gnuplot_monks</a>&nbsp;(traces, nn, num, is_test)</td>
+	<td class="summary">Generate EPS plots for a MONKS problem.</td>
+	</tr>
+
+	<tr>
 	<td class="name" nowrap><a href="#parse_cup">parse_cup</a>&nbsp;(source_file, has_labels)</td>
 	<td class="summary">Parse ML-CUP data file Parses provided CSV file, applying normalization to input and targets.</td>
 	</tr>
@@ -96,6 +106,74 @@
 
 <h2><a name="functions"></a>Functions</h2>
 <dl class="function">
+
+
+
+<dt><a name="gnuplot_cup"></a><strong>gnuplot_cup</strong>&nbsp;(traces, nn)</dt>
+<dd>
+Generate EPS plots for ML-CUP. The file name will tell about the employed hyperparameters.
+
+
+<h3>Parameters</h3>
+<ul>
+	
+	<li>
+	  traces: Standard error/accuracy trace table. traces.validation is optional.
+	</li>
+	
+	<li>
+	  nn: Neural network that generated the traces. Hyperparameters are read from it.
+	</li>
+	
+</ul>
+
+
+
+
+
+
+
+
+</dd>
+
+
+
+
+<dt><a name="gnuplot_monks"></a><strong>gnuplot_monks</strong>&nbsp;(traces, nn, num, is_test)</dt>
+<dd>
+Generate EPS plots for a MONKS problem. The file name will tell about the employed hyperparameters.
+
+
+<h3>Parameters</h3>
+<ul>
+	
+	<li>
+	  traces: Standard error/accuracy trace table. traces.validation is required.
+	</li>
+	
+	<li>
+	  nn: Neural network that generated the traces. Hyperparameters are read from it.
+	</li>
+	
+	<li>
+	  num: MONKS dataset enumerator (1, 2 or 3)
+	</li>
+	
+	<li>
+	  is_test: Boolean indicating if traces.validation represents a Test set or Validation set.
+	</li>
+	
+</ul>
+
+
+
+
+
+
+
+
+</dd>
+
 
 
 

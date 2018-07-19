@@ -122,6 +122,11 @@
 	</tr>
 
 	<tr>
+	<td class="name" nowrap><a href="#join_traces">join_traces</a>&nbsp;(accumulator, addendum)</td>
+	<td class="summary">Adds error and accuracy traces from addendum to accumulator.</td>
+	</tr>
+
+	<tr>
 	<td class="name" nowrap><a href="#mlp.new">mlp.new</a>&nbsp;(input_size, output_size, options)</td>
 	<td class="summary">Multi-Layer Perceptron constructor.</td>
 	</tr>
@@ -144,6 +149,11 @@
 	<tr>
 	<td class="name" nowrap><a href="#squared_error">squared_error</a>&nbsp;(x, y)</td>
 	<td class="summary">Squared error contribution.</td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#trail_vector_to">trail_vector_to</a>&nbsp;(x, len)</td>
+	<td class="summary">Extends a vector to length len.</td>
 	</tr>
 
 </table>
@@ -254,7 +264,7 @@ Run K-fold Cross Validation. Defines a random partition of set over k regions; r
 
 
 <h3>Return value:</h3>
-validation error mean, validation error standard deviation
+Table with error traces for the CV averaged over the folds, that is: <li>traces.training.error_trace: Tensor of error measures computed at each epoch.</li> <li>traces.training.accuracy_trace: Tensor of accuracy measures computed at each epoch.</li> <li>traces.validation: Likewise.</li> <li>traces.validation.error_mean: final mean error for VS.</li> <li>traces.validation.error_sd: standard deviation of final mean error for VS.</li>
 
 
 
@@ -500,6 +510,36 @@ torch.norm(x - y)
 
 
 
+<dt><a name="join_traces"></a><strong>join_traces</strong>&nbsp;(accumulator, addendum)</dt>
+<dd>
+Adds error and accuracy traces from addendum to accumulator. Private conveniency function.
+
+
+<h3>Parameters</h3>
+<ul>
+	
+	<li>
+	  accumulator: Formatted like a standard trace table.
+	</li>
+	
+	<li>
+	  addendum: Formatted like a standard trace table.
+	</li>
+	
+</ul>
+
+
+
+
+
+
+
+
+</dd>
+
+
+
+
 <dt><a name="mlp.new"></a><strong>mlp.new</strong>&nbsp;(input_size, output_size, options)</dt>
 <dd>
 Multi-Layer Perceptron constructor.
@@ -657,6 +697,39 @@ Squared error contribution. Returns the squared 2-norm of x - y.
 
 <h3>Return value:</h3>
 torch.norm(x - y)^2
+
+
+
+</dd>
+
+
+
+
+<dt><a name="trail_vector_to"></a><strong>trail_vector_to</strong>&nbsp;(x, len)</dt>
+<dd>
+Extends a vector to length len. New elements will be copies of the last element of x. REQUIRES: len >= x:size(1)
+
+
+<h3>Parameters</h3>
+<ul>
+	
+	<li>
+	  x: Torch one-dimensional Tensor.
+	</li>
+	
+	<li>
+	  len: Integer length of new vector.
+	</li>
+	
+</ul>
+
+
+
+
+
+
+<h3>Return value:</h3>
+The new extended vector.
 
 
 
