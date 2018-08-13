@@ -277,6 +277,7 @@ function MLP:train_once(training_set, validation_set)
       W_out_delta_acc:add(W_out_delta)
       W_in_delta_acc:add(W_in_delta)
     end
+    
     -- average deltas
     W_out_delta_acc:div(#tr_input)
     W_in_delta_acc:div(#tr_input)
@@ -350,18 +351,6 @@ function MLP:train(training_set, validation_set)
   self.W_in = W_in_best
   self.W_out = W_out_best
   return traces_best
-end
-
-local huge = math.huge
-local min = math.min
-local max = math.max
-local function join_error_tensors(x, y, fun)
-  if x:size(1) < y:size(1) then
-    x = x:cat(torch.Tensor(y:size(1) - x:size(1)):fill(x[x:size(1)]))
-  elseif x:size(1) > y:size(1) then
-    y = y:cat(torch.Tensor(x:size(1) - y:size(1)):fill(y[y:size(1)]))
-  end
-  return x:add(y)
 end
 
 
