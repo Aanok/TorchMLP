@@ -202,10 +202,10 @@ function gnuplot_cup(traces, nn)
   gnuplot.raw('set xtics font ",20"')
   gnuplot.raw('set ytics font ",20"')
   if traces.validation then
-    gnuplot.plot({"Training MEE", traces.training.error_trace, 'with lines lw 2 lc "red"'},
-                 {"Validation MEE", traces.validation.error_trace, 'with lines lw 2 dt "." lc "blue"'})
+    gnuplot.plot({"Training MEE", traces.training.pp_error_trace, 'with lines lw 2 lc "red"'},
+                 {"Validation MEE", traces.validation.pp_error_trace, 'with lines lw 2 dt "." lc "blue"'})
   else
-    gnuplot.plot({"Training MEE", traces.training.error_trace, 'with lines lw 2 lc "red"'})
+    gnuplot.plot({"Training MEE", traces.training.pp_error_trace, 'with lines lw 2 lc "red"'})
   end
   gnuplot.plotflush()
 end

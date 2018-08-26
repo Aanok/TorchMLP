@@ -69,17 +69,20 @@ end
 -- <li>options.learning_rate: Multiplicative coefficient for delta in gradient descent (eta). Default: 1.</li>
 -- <li>options.momentum: Multiplicative coefficient for momentum contribution in update. Default: 0.</li>
 -- <li>options.penalty: Multiplicative coefficient for L2 regularization term. Default: 0.</li>
--- <li>options.early_stop_threshold: TR error threshold (after update) that triggers early stop. Default: 0.001.</li>
+-- <li>options.early_stop_threshold: TR error threshold (after update) that triggers early stop. Default: 10^-3.</li>
+-- <li>options.diminishing_returns_threshold: Threshold triggering early stopping when the TR error improvement falls under it. Default: 10^-4.</li>
 -- <li>options.act_fun: Activation function of input-to-hidden layer (real -> real). Default: sigmoid.</li>
 -- <li>options.act_fun_der: Derivative of act_fun (real -> real). Default: sigmoid_der.</li>
 -- &emsp; Note: both act_fun and act_fun_der must be passed or neither will be assigned.
--- <li>out_fun: Activation function of hidden-to-output layer (real -> real). Default: sigmoid.</li>
--- <li>out_fun_der: Derivative of out_fun (real -> real)</li>
+-- <li>options.out_fun: Activation function of hidden-to-output layer (real -> real). Default: sigmoid.</li>
+-- <li>options.out_fun_der: Derivative of out_fun (real -> real)</li>
 -- &emsp; Note: both out_fun and out_fun_der must be passed or neither will be assigned.
--- <li>postprocess: Postprocessing function to apply to the output (e.g. thresholding or a linear transformation) (Tensor -> Tensor). Default: identity.</li>
+-- <li>options.postprocess: Postprocessing function to apply to the output (e.g. thresholding or a linear transformation) (Tensor -> Tensor). Default: identity.</li>
 -- &emsp; Note: it is not used during training.</li>
--- <li>max_epochs: Epoch iteration high end cutoff. Default: 100.</li>
--- <li>error_metric: Error function, accumulated over all outputs during the epoch, averaged at the end of epoch for final aggregate result ((Tensor, Tensor) -> real). Default: squared_error.</li>
+-- <li>options.max_epochs: Epoch iteration high end cutoff. Default: 100.</li>
+-- <li>options.error_metric: Error function, accumulated over all outputs during the epoch, averaged at the end of epoch for final aggregate result ((Tensor, Tensor) -> real). Default: squared_error.</li>
+-- <li>options.postprocess_error: Boolean indicating if a second error measurement should be provided by comparing
+-- postprocessed output to postprocessed targets. It will not be used for training.
 -- @return The new MLP instance.
 function mlp.new(input_size, output_size, options)
   local self = {}
@@ -93,6 +96,7 @@ function mlp.new(input_size, output_size, options)
   self.momentum = options.momentum or 0
   self.penalty = options.penalty or 0
   self.early_stop_threshold = options.early_stop_threshold or 0.001
+  self.diminishing_returns_threshold = options.diminishing_returns_threshold or 0.0001
   if options.act_fun and options.act_fun_der then
     self.act_fun, self.act_fun_der = options.act_fun, options.act_fun_der
   else
@@ -106,6 +110,7 @@ function mlp.new(input_size, output_size, options)
   self.postprocess = options.postprocess or function(x) return x end
   self.max_epochs = options.max_epochs or 100
   self.error_metric = options.error_metric or squared_error
+  self.postprocess_error = options.postprocess_error
   
   return self
 end
@@ -122,14 +127,32 @@ end
 function MLP:mean_error(set)
   -- accumulate over patterns
   local error_acc = 0
+  local pp_error_acc = 0
   local well_classified = 0
-  for i,p in ipairs(set[1]) do
-    local raw_output = self:sim_raw(p)
-    error_acc = error_acc + self.error_metric(raw_output, set[2][i])
-    if torch.equal(self.postprocess(raw_output), set[2][i]) then well_classified = well_classified + 1 end
+  
+  -- if required, we compute a second error measurement by comparing postprocessed output
+  -- to postprocessed targets
+  -- done like so because i'd rather duplicate code with an outer conditional than put one in the loop
+  if self.postprocess_error then
+    for i,p in ipairs(set[1]) do
+      local raw_output = self:sim_raw(p)
+      local pp_output = self.postprocess(raw_output:clone())
+      local pp_target = self.postprocess(set[2][i]:clone())
+      error_acc = error_acc + self.error_metric(raw_output, set[2][i])
+      pp_error_acc = pp_error_acc + self.error_metric(pp_output, pp_target)/#set[1] -- not normalized, might overflow
+      if torch.equal(pp_output, pp_target) then well_classified = well_classified + 1 end
+    end
+  else
+    for i,p in ipairs(set[1]) do
+      local raw_output = self:sim_raw(p)
+      error_acc = error_acc + self.error_metric(raw_output, set[2][i])
+      if torch.equal(self.postprocess(raw_output), self.postprocess(set[2][i]:clone())) then well_classified = well_classified + 1 end
+    end
   end
+  
+  
   -- then average/reduce
-  return error_acc/#set[1], well_classified/#set[1]
+  return error_acc/#set[1], well_classified/#set[1], pp_error_acc
 end
 
 
@@ -185,6 +208,7 @@ function MLP:update_step(member_str, W_delta, W_delta_old)
 end
 
 
+local abs = math.abs -- performance
 --- Check conditions for early stop.
 -- Conditions: TR error < self.early_stop_threshold or TR error increasing or VL error increasing or VL accuracy 100%.
 -- @param epoch Counter for the current epoch.
@@ -207,23 +231,24 @@ function MLP:early_stop(epoch, traces)
     tr.old_error = tr.old_error + tr.error_trace[epoch - 10]/10
     if tr.new_error < self.early_stop_threshold then return true end
   end
-  -- tr_error incresing
+  -- tr_error incresing or decreasing too slowly
   -- moving averages over last 20 epochs, 10 and 10
   if epoch > 20 then
     tr.old_error = tr.old_error - tr.error_trace[epoch - 20]/10
     if tr.new_error > tr.old_error then return true end
+    if abs(tr.new_error - tr.old_error) < self.diminishing_returns_threshold then return true end
   end
   
   -- validation error is increasing
   -- moving averages over the last 20 epochs, 10 and 10
   if val then
-    val.new_error = val.new_error + val.error_trace[epoch]
+    val.new_error = val.new_error + val.error_trace[epoch]/10
     if epoch > 10 then
-      val.new_error = val.new_error - val.error_trace[epoch - 10]
-      val.old_error = val.old_error + val.error_trace[epoch - 10]
+      val.new_error = val.new_error - val.error_trace[epoch - 10]/10
+      val.old_error = val.old_error + val.error_trace[epoch - 10]/10
     end
     if epoch > 20 then
-      val.old_error = val.old_error - val.error_trace[epoch - 20]
+      val.old_error = val.old_error - val.error_trace[epoch - 20]/10
       if val.new_error > val.old_error then return true end
     end
 
@@ -244,6 +269,7 @@ end
 -- @return Table with error traces for TR and, if present, VL, that is:
 -- <li>traces.training.error_trace: Tensor of error measures computed at each epoch.</li>
 -- <li>traces.training.accuracy_trace: Tensor of accuracy measures computed at each epoch.</li>
+-- <li>traces.training.pp_error_trace: Tensor of postprocessed error measures computed at each epoch.</li>
 -- <li>traces.validation: Likewise.</li>
 function MLP:train_once(training_set, validation_set)
   -- conveniency aliases (also useful for perfomance)
@@ -252,11 +278,11 @@ function MLP:train_once(training_set, validation_set)
   local val_input, val_targets = nil,nil
   
   -- trace of error metric at each epoch
-  local traces = { training = { error_trace = {}, accuracy_trace = {}, new_error = 0, old_error = 0 }}
+  local traces = { training = { error_trace = {}, accuracy_trace = {}, pp_error_trace = {}, new_error = 0, old_error = 0 }}
   
   -- validation related values are defined only if appropriate
   if validation_set then
-    traces.validation = { error_trace = {}, accuracy_trace = {}, new_error = 0, old_error = 0 }
+    traces.validation = { error_trace = {}, accuracy_trace = {}, pp_error_trace = {}, new_error = 0, old_error = 0 }
     val_input = validation_set[1]
     val_targets = validation_set[2]
   end
@@ -289,9 +315,13 @@ function MLP:train_once(training_set, validation_set)
     W_in_delta_old = W_in_delta_acc
     
     -- compute errors for the epoch
-    traces.training.error_trace[#traces.training.error_trace + 1], traces.training.accuracy_trace[#traces.training.accuracy_trace + 1] = self:mean_error(training_set)
+    traces.training.error_trace[#traces.training.error_trace + 1],
+    traces.training.accuracy_trace[#traces.training.accuracy_trace + 1],
+    traces.training.pp_error_trace[#traces.training.pp_error_trace + 1] = self:mean_error(training_set)
     if validation_set then
-      traces.validation.error_trace[#traces.validation.error_trace + 1], traces.validation.accuracy_trace[#traces.validation.accuracy_trace + 1] = self:mean_error(validation_set)
+      traces.validation.error_trace[#traces.validation.error_trace + 1],
+      traces.validation.accuracy_trace[#traces.validation.accuracy_trace + 1],
+      traces.validation.pp_error_trace[#traces.validation.pp_error_trace + 1] = self:mean_error(validation_set)
     end
     
     -- check for early stop
@@ -300,9 +330,9 @@ function MLP:train_once(training_set, validation_set)
   
   -- format output for gnuplot
   for _,set in pairs(traces) do
-    for trace_name,trace in pairs(set) do
-      set[trace_name] = torch.Tensor(trace)
-    end
+    set.error_trace = torch.Tensor(set.error_trace)
+    set.accuracy_trace = torch.Tensor(set.accuracy_trace)
+    set.pp_error_trace = torch.Tensor(set.pp_error_trace)
   end
   
   return traces
@@ -373,7 +403,23 @@ local function join_traces(accumulator, addendum)
   for k,acc_err in pairs(accumulator) do
     acc_err.error_trace:add(trail_vector_to(addendum[k].error_trace, acc_err.error_trace:size(1)))
     acc_err.accuracy_trace:add(trail_vector_to(addendum[k].accuracy_trace, acc_err.accuracy_trace:size(1)))
+    acc_err.pp_error_trace:add(trail_vector_to(addendum[k].pp_error_trace, acc_err.pp_error_trace:size(1)))
   end
+end
+
+
+--- Computes mean value and standard deviation of values in tensor.
+-- Private conveniency function.
+-- @param tensor The source of data
+-- @return Mean value, standard deviation
+local function mean_sd(tensor)
+  local sd = 0
+  local mean = 0
+  tensor:apply(function(x) mean = mean + x end)
+  mean = mean / tensor:nElement()
+  tensor:apply(function(x) sd = sd + (x - mean)^2 end)
+  sd = math.sqrt(sd) / tensor:nElement()
+  return mean, sd
 end
 
 
@@ -394,15 +440,18 @@ function MLP:k_fold_cross_validate(set, k)
   local fold_size = math.ceil(#set[1]/k) -- rounding up means favouring VL
   local access = torch.randperm(#set[1]) -- to shuffle the pattern set
   local val_errors = torch.Tensor(k) -- store values to compute standard deviation
+  local pp_val_errors = torch.Tensor(k) -- likewise, but for postprocessed error
   local longest_run = 0 -- highes epoch cutoff; we'll trim the results up to this
   local mean_traces = {
     training = {
       error_trace = torch.zeros(self.max_epochs),
-      accuracy_trace = torch.zeros(self.max_epochs)
+      accuracy_trace = torch.zeros(self.max_epochs),
+      pp_error_trace = torch.zeros(self.max_epochs)
     },
     validation = {
       error_trace = torch.zeros(self.max_epochs),
-      accuracy_trace = torch.zeros(self.max_epochs)
+      accuracy_trace = torch.zeros(self.max_epochs),
+      pp_error_trace = torch.zeros(self.max_epochs)
     }
   }
   -- iterate folds
@@ -424,22 +473,19 @@ function MLP:k_fold_cross_validate(set, k)
     local fold_traces = self:train(tr_fold, val_fold)
     -- bookkeeping for statistical analysis
     longest_run = math.max(longest_run, fold_traces.training.error_trace:size(1))
-    val_errors[k] = fold_traces.validation.error_trace[#fold_traces.validation.error_trace]
+    val_errors[i] = fold_traces.validation.error_trace[#fold_traces.validation.error_trace]
+    pp_val_errors[i] = fold_traces.validation.pp_error_trace[#fold_traces.validation.pp_error_trace]
     join_traces(mean_traces, fold_traces)
   end
   -- finalize measurements
   for tr_vs_name,tr_vs in pairs(mean_traces) do
-    for err_acc_name,err_acc in pairs(tr_vs) do
+    for err_acc_pp_name,err_acc_pp in pairs(tr_vs) do
       -- averages
-      mean_traces[tr_vs_name][err_acc_name] = err_acc:sub(1, longest_run):div(k)
+      mean_traces[tr_vs_name][err_acc_pp_name] = err_acc_pp:sub(1, longest_run):div(k)
     end
   end
-  local val_error_sd = 0
-  local val_error_mean = mean_traces.validation.error_trace[#mean_traces.validation.error_trace]
-  val_errors:apply(function(x) val_error_sd = val_error_sd + (x - val_error_mean)^2 end)
-  val_error_sd = math.sqrt(val_error_sd) / k
-  mean_traces.validation.error_mean = val_error_mean
-  mean_traces.validation.error_sd = val_error_sd
+  mean_traces.validation.error_mean, mean_traces.validation.error_sd = mean_sd(val_errors)
+  mean_traces.validation.pp_error_mean, mean_traces.validation.pp_error_sd = mean_sd(pp_val_errors)
   return mean_traces
 end
 

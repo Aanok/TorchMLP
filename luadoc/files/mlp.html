@@ -127,6 +127,11 @@
 	</tr>
 
 	<tr>
+	<td class="name" nowrap><a href="#mean_sd">mean_sd</a>&nbsp;(tensor)</td>
+	<td class="summary">Computes mean value and standard deviation of values in tensor.</td>
+	</tr>
+
+	<tr>
 	<td class="name" nowrap><a href="#mlp.new">mlp.new</a>&nbsp;(input_size, output_size, options)</td>
 	<td class="summary">Multi-Layer Perceptron constructor.</td>
 	</tr>
@@ -434,7 +439,7 @@ Train self to convergence over a labelled training set. Runs main GD with moment
 
 
 <h3>Return value:</h3>
-Table with error traces for TR and, if present, VL, that is: <li>traces.training.error_trace: Tensor of error measures computed at each epoch.</li> <li>traces.training.accuracy_trace: Tensor of accuracy measures computed at each epoch.</li> <li>traces.validation: Likewise.</li>
+Table with error traces for TR and, if present, VL, that is: <li>traces.training.error_trace: Tensor of error measures computed at each epoch.</li> <li>traces.training.accuracy_trace: Tensor of accuracy measures computed at each epoch.</li> <li>traces.training.pp_error_trace: Tensor of postprocessed error measures computed at each epoch.</li> <li>traces.validation: Likewise.</li>
 
 
 
@@ -540,6 +545,35 @@ Adds error and accuracy traces from addendum to accumulator. Private conveniency
 
 
 
+<dt><a name="mean_sd"></a><strong>mean_sd</strong>&nbsp;(tensor)</dt>
+<dd>
+Computes mean value and standard deviation of values in tensor. Private conveniency function.
+
+
+<h3>Parameters</h3>
+<ul>
+	
+	<li>
+	  tensor: The source of data
+	</li>
+	
+</ul>
+
+
+
+
+
+
+<h3>Return value:</h3>
+Mean value, standard deviation
+
+
+
+</dd>
+
+
+
+
 <dt><a name="mlp.new"></a><strong>mlp.new</strong>&nbsp;(input_size, output_size, options)</dt>
 <dd>
 Multi-Layer Perceptron constructor.
@@ -557,7 +591,7 @@ Multi-Layer Perceptron constructor.
 	</li>
 	
 	<li>
-	  options: Table containing optional fields specifying parameters and hyperparameters. All values have defaults to fall back on. The table must be present but it may be empty. <li>options.neurons: Number of hidden units. Default: 10.</li> <li>options.init_range: Connection weights are initialized uniformly in [-init_range, init_range]. Default: 0.5.</li> <li>options.learning_rate: Multiplicative coefficient for delta in gradient descent (eta). Default: 1.</li> <li>options.momentum: Multiplicative coefficient for momentum contribution in update. Default: 0.</li> <li>options.penalty: Multiplicative coefficient for L2 regularization term. Default: 0.</li> <li>options.early_stop_threshold: TR error threshold (after update) that triggers early stop. Default: 0.001.</li> <li>options.act_fun: Activation function of input-to-hidden layer (real -> real). Default: sigmoid.</li> <li>options.act_fun_der: Derivative of act_fun (real -> real). Default: sigmoid_der.</li> &emsp; Note: both act_fun and act_fun_der must be passed or neither will be assigned. <li>out_fun: Activation function of hidden-to-output layer (real -> real). Default: sigmoid.</li> <li>out_fun_der: Derivative of out_fun (real -> real)</li> &emsp; Note: both out_fun and out_fun_der must be passed or neither will be assigned. <li>postprocess: Postprocessing function to apply to the output (e.g. thresholding or a linear transformation) (Tensor -> Tensor). Default: identity.</li> &emsp; Note: it is not used during training.</li> <li>max_epochs: Epoch iteration high end cutoff. Default: 100.</li> <li>error_metric: Error function, accumulated over all outputs during the epoch, averaged at the end of epoch for final aggregate result ((Tensor, Tensor) -> real). Default: squared_error.</li>
+	  options: Table containing optional fields specifying parameters and hyperparameters. All values have defaults to fall back on. The table must be present but it may be empty. <li>options.neurons: Number of hidden units. Default: 10.</li> <li>options.init_range: Connection weights are initialized uniformly in [-init_range, init_range]. Default: 0.5.</li> <li>options.learning_rate: Multiplicative coefficient for delta in gradient descent (eta). Default: 1.</li> <li>options.momentum: Multiplicative coefficient for momentum contribution in update. Default: 0.</li> <li>options.penalty: Multiplicative coefficient for L2 regularization term. Default: 0.</li> <li>options.early_stop_threshold: TR error threshold (after update) that triggers early stop. Default: 10^-3.</li> <li>options.diminishing_returns_threshold: Threshold triggering early stopping when the TR error improvement falls under it. Default: 10^-4.</li> <li>options.act_fun: Activation function of input-to-hidden layer (real -> real). Default: sigmoid.</li> <li>options.act_fun_der: Derivative of act_fun (real -> real). Default: sigmoid_der.</li> &emsp; Note: both act_fun and act_fun_der must be passed or neither will be assigned. <li>options.out_fun: Activation function of hidden-to-output layer (real -> real). Default: sigmoid.</li> <li>options.out_fun_der: Derivative of out_fun (real -> real)</li> &emsp; Note: both out_fun and out_fun_der must be passed or neither will be assigned. <li>options.postprocess: Postprocessing function to apply to the output (e.g. thresholding or a linear transformation) (Tensor -> Tensor). Default: identity.</li> &emsp; Note: it is not used during training.</li> <li>options.max_epochs: Epoch iteration high end cutoff. Default: 100.</li> <li>options.error_metric: Error function, accumulated over all outputs during the epoch, averaged at the end of epoch for final aggregate result ((Tensor, Tensor) -> real). Default: squared_error.</li> <li>options.postprocess_error: Boolean indicating if a second error measurement should be provided by comparing postprocessed output to postprocessed targets. It will not be used for training.
 	</li>
 	
 </ul>

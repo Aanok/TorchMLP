@@ -38,7 +38,7 @@ for _,lr in ipairs({10,5,1,0.5,0.1}) do
         print("5-fold CV completed in " ..  t2 - t1 .. " seconds. Data:")
         trace[#trace + 1] = {lr = lr, m = m, p = p, e_mean = fold_trace.validation.error_mean, e_sd = fold_trace.validation.error_sd, time = t2 - t1}
         print(trace[#trace])
-        gnuplot_monks(trace, nn, 1, false)
+        gnuplot_monks(fold_trace, nn, 3, false)
         if fold_trace.validation.error_mean < best.e_mean then
           best = trace[#trace]
           print("Selected as current best hyperparameters.")
