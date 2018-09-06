@@ -14,7 +14,7 @@ test.name = "ML-CUP17-TS"
 local range = t_max - t_min
 
 local nn = mlp.new(10, 2, {
-  neurons = 1,
+  neurons = 2,
   learning_rate = 1,
   momentum = 0,
   penalty = 0,
