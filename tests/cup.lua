@@ -27,25 +27,22 @@ local nn = mlp.new(10, 2, {
 local timer = torch.Timer()
 local best = { e_mean = math.huge }
 local trace = {}
-for _,lr in ipairs({15,10,1,0.5,0.1}) do
-  for _,m in ipairs({1,0.1,0.01,0.001,0.0001}) do
-    for _,p in ipairs({1,0.1,0.01,0.001,0.0001}) do
-      if m < lr and p <= m then
-        -- the other combinations are fairly nonsensical
-        nn.learning_rate = lr
-        nn.momentum = m
-        nn.penalty = p
-        local t1 = timer:time().real
-        local fold_trace = nn:k_fold_cross_validate(training, 5)
-        local t2 = timer:time().real
-        print("5-fold CV completed in " ..  t2 - t1 .. " seconds. Data:")
-        trace[#trace + 1] = {lr = lr, m = m, p = p, e_mean = fold_trace.validation.pp_error_mean, e_sd = fold_trace.validation.pp_error_sd, time = t2 - t1}
-        print(trace[#trace])
-        gnuplot_cup(fold_trace, nn)
-        if fold_trace.validation.pp_error_mean < best.e_mean then
-          best = trace[#trace]
-          print("Selected as current best hyperparameters.")
-        end
+for _,lr in ipairs({32,16,8,4,2,1}) do
+  for _,m in ipairs({16,8,4,2,1}) do
+    for _,p in ipairs({0.001,0.0001,0.00001}) do
+      nn.learning_rate = lr
+      nn.momentum = m
+      nn.penalty = p
+      local t1 = timer:time().real
+      local fold_trace = nn:k_fold_cross_validate(training, 5)
+      local t2 = timer:time().real
+      print("5-fold CV completed in " ..  t2 - t1 .. " seconds. Data:")
+      trace[#trace + 1] = {lr = lr, m = m, p = p, e_mean = fold_trace.validation.pp_error_mean, e_sd = fold_trace.validation.pp_error_sd, time = t2 - t1}
+      print(trace[#trace])
+      gnuplot_cup(fold_trace, nn)
+      if fold_trace.validation.pp_error_mean < best.e_mean then
+        best = trace[#trace]
+        print("Selected as current best hyperparameters.")
       end
     end
   end
